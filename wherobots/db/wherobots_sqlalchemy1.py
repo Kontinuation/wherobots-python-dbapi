@@ -1,11 +1,10 @@
-import types
 from ctypes import util
-from typing import re
+import re
 import logging
 
-from numba.core.typing.cffi_utils import _type_map
 from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.dialects import registry
+from sqlalchemy import types
 from sqlalchemy.sql.compiler import IdentifierPreparer
 
 # from wherobots.db import connect as wherobots_connect
@@ -44,6 +43,7 @@ class WherobotsDialect1(DefaultDialect):
         print("\nRunning create_connect_args()\n")
         runtime = url.query.get("runtime", "SEDONA")
         region = url.query.get("region", "AWS_US_WEST_2")
+        ws_url = url.query.get("ws_url")
         print("\nRunning create_connect_args\n")
 
         if isinstance(runtime, str):
@@ -53,9 +53,11 @@ class WherobotsDialect1(DefaultDialect):
             region = Region[region]
 
         opts = {
+            "host": url.host,
             "api_key": url.username,
             "runtime": runtime,
-            "region": region
+            "region": region,
+            "ws_url": ws_url,
         }
         return ([], opts)
 
@@ -104,7 +106,14 @@ class WherobotsDialect1(DefaultDialect):
                 break
             col_type = re.search(r'^\w+', col_type).group(0)
             try:
-                coltype = _type_map[col_type]
+                type_map = {
+                    'int': types.Integer,
+                    'string': types.String,
+                    'double': types.REAL,
+                    'float': types.Float,
+                    'geometry': types.String,
+                }
+                coltype = type_map[col_type]
             except KeyError:
                 logger.warning(f"Did not recognize type '{col_type}' of column '{col_name}'")
                 coltype = types.NullType
@@ -138,6 +147,20 @@ class WherobotsDialect1(DefaultDialect):
         resultSet = [row[1] for row in result]
         print(f"       get_table_names() resultSet - {resultSet}\n\n\n")
         return resultSet
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        return {
+            'constrained_columns': []
+        }
+
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        return []
+
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        return []
+
+    def get_view_names(self, connection, schema=None, **kw):
+        return []
 
     def do_rollback(self, dbapi_connection):
         print("\nRunning do_rollback()\n")

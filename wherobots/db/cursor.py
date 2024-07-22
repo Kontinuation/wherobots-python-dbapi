@@ -92,7 +92,7 @@ class Cursor:
         return self.__results
 
     def execute(self, operation: str, parameters: dict[str, Any] = None):
-        print("\n       Running Wherobots-python-DBAPI execute()\n")
+        print(f"\n       Running Wherobots-python-DBAPI execute(operation={operation}, parameters={parameters})\n")
         if self.__current_execution_id:
             self.__cancel_fn(self.__current_execution_id)
 
